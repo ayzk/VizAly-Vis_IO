@@ -1,7 +1,16 @@
 cmake_minimum_required(VERSION 3.0)
 project(HelloWorld)
-set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 11)
+
+set(default_build_type "debug")
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "No build type was set. Setting build type to ${default_build_type}.")
+    set(CMAKE_BUILD_TYPE ${default_build_type} CACHE
+            STRING "Choose the type to build" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+            "MinSizeRel" "RelWithDebInfo")
+endif ()
+
 
 find_package(PkgConfig)
 
