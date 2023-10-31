@@ -255,12 +255,12 @@ inline size_t StreamingShimComp::stmCompress_SZ3(float *input, std::string dataT
     outputFile.write(reinterpret_cast<const char *>(cmpBlkCmpSize.data()), cmpBlkCmpSize.size() * sizeof(u_int32_t));
     outputFile.write(reinterpret_cast<const char *>(cmpBlkNumRows.data()), cmpBlkNumRows.size() * sizeof(u_int32_t));
 
-    SZ::HuffmanEncoder<int> encoder;
+    SZ3::HuffmanEncoder<int> encoder;
     bool isFirstComprIter = true;
 
     size_t bufferSize = 2 * sizeof(double) * numElements;
-    auto *buffer = new SZ::uchar[bufferSize];
-    SZ::uchar *buffer_pos = buffer;
+    auto *buffer = new SZ3::uchar[bufferSize];
+    SZ3::uchar *buffer_pos = buffer;
     std::vector<int> quant_inds(numElements);
 
     // Compress Blocks
@@ -275,29 +275,29 @@ inline size_t StreamingShimComp::stmCompress_SZ3(float *input, std::string dataT
         if (numToCompress + pos > numElements)
             numToCompress = numElements - pos;
 
-        SZ::Config conf(numToCompress);
-        conf.cmprAlgo = SZ::ALGO_LORENZO_REG;
+        SZ3::Config conf(numToCompress);
+        conf.cmprAlgo = SZ3::ALGO_LORENZO_REG;
         conf.lorenzo = true;
         conf.regression = false;
         if (params.count("abs") != 0) {
-            conf.errorBoundMode = SZ::EB_ABS;
+            conf.errorBoundMode = SZ3::EB_ABS;
             conf.absErrorBound = std::stof(params["abs"]);
         } else if (params.count("rel") != 0) {
-            conf.errorBoundMode = SZ::EB_ABS;
+            conf.errorBoundMode = SZ3::EB_ABS;
             conf.absErrorBound = std::stof(params["abs"]);
         } else {
             throw "error bound not supported";
         }
         void *output;
         std::vector<float> data_cpy(&input[pos], &input[pos + numToCompress]);
-        SZ::calAbsErrorBound(conf, data_cpy.data());
+        SZ3::calAbsErrorBound(conf, data_cpy.data());
         if (params["compressor"] == "SZ3-small-tree") {
             output = SZ_compress<float>(conf, &input[pos], csize);
         } else {
             std::vector<int> quant_inds_block;
-            auto predictor = SZ::LorenzoPredictor<float, 1, 1>(conf.absErrorBound);
-            auto quantizer = SZ::LinearQuantizer<float>(conf.absErrorBound, conf.quantbinCnt / 2);
-            auto frontend = SZ::make_sz_general_frontend<float, 1>(conf, predictor, quantizer);
+            auto predictor = SZ3::LorenzoPredictor<float, 1, 1>(conf.absErrorBound);
+            auto quantizer = SZ3::LinearQuantizer<float>(conf.absErrorBound, conf.quantbinCnt / 2);
+            auto frontend = SZ3::make_sz_general_frontend<float, 1>(conf, predictor, quantizer);
             quant_inds_block = frontend.compress(data_cpy.data());
 
             if (params["compressor"] == "SZ3-first-tree") {
@@ -321,7 +321,7 @@ inline size_t StreamingShimComp::stmCompress_SZ3(float *input, std::string dataT
 
                 encoder.encode(quant_inds_block, buffer_pos);
 
-                SZ::Lossless_zstd zstd;
+                SZ3::Lossless_zstd zstd;
                 output = zstd.compress(buffer, buffer_pos - buffer, csize);
                 isFirstComprIter = false;
 
@@ -355,7 +355,7 @@ inline size_t StreamingShimComp::stmCompress_SZ3(float *input, std::string dataT
         buffer_pos = buffer;
 
         //build huffman tree
-        SZ::HuffmanEncoder<int> huffman;
+        SZ3::HuffmanEncoder<int> huffman;
         huffman.preprocess_encode(quant_inds, 0);
 
         //write huffman tree to file
@@ -370,7 +370,7 @@ inline size_t StreamingShimComp::stmCompress_SZ3(float *input, std::string dataT
 
 
             //encode each block and zstd it
-            SZ::Lossless_zstd zstd;
+            SZ3::Lossless_zstd zstd;
             buffer_pos = buffer;
             huffman.encode(&quant_inds[pos], numToCompress, buffer_pos);
             void *output = zstd.compress(buffer, buffer_pos - buffer, csize);
