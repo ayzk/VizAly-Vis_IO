@@ -17,7 +17,7 @@ int main(int argc, const char* argv[])
 
     int blockSize;
 
-   
+
 
     std::string filename = "/home/pascal/data/HACC/hydro/output_sf_l64n256_ce_fire3_cloudy/m000.full.mpicosmo.624";
     std::cout << "file: " << filename << std::endl;
@@ -32,15 +32,19 @@ int main(int argc, const char* argv[])
 
 
     blockSize = haccLoader.numElements;
-     if (argc == 2)
+     if (argc >= 2)
         blockSize = std::stoi(argv[1]);
 
     std::cout << "Block size: " << blockSize;
-    StreamingShimComp cmpStr; 
+    StreamingShimComp cmpStr;
     //cmpStr.compress(&randomArray[0], "float", sizeof(float), dims, blockSize);
 
+    if (argc >= 3) {
+        cmpStr.setParam("compressor", argv[2]);
+    } else {
+        cmpStr.setParam("compressor", "SZ");
+    }
 
-    cmpStr.setParam("compressor","SZ");
     cmpStr.setParam("abs","0.03");
     cmpStr.setParam("type","float");
 

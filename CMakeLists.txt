@@ -1,50 +1,9 @@
+cmake_minimum_required(VERSION 3.0)
 project(HelloWorld)
 set(CMAKE_BUILD_TYPE Debug)
-cmake_minimum_required(VERSION 3.0)
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 
-
-# SZ
-find_library(SZ_LIBRARY ${SZ_LIBRARY} CACHE STRING "SZ library")
-if (NOT SZ_LIBRARY)
-    message(FATAL_ERROR "Could NOT find SZ")
-endif()
-
-set (SZ_INCLUDE_PATH ${SZ_INCLUDE_PATH} CACHE PATH "SZ include directory")
-include_directories(${SZ_INCLUDE_PATH})
-
-
-
-# BLOSC
-find_library(BLOSC_LIBRARY ${BLOSC_LIBRARY} CACHE STRING "BLOSC_LIBRARY library")
-if (NOT BLOSC_LIBRARY)
-    message(FATAL_ERROR "Could NOT find BLOSC")
-endif()
-
-set (BLOSC_INCLUDE_PATH ${BLOSC_INCLUDE_PATH} CACHE PATH "BLOSC include directory")
-include_directories(${BLOSC_INCLUDE_PATH})
-
-
-
-
-
-# MPI
-find_package(MPI)
-if (MPI_FOUND)
-	include_directories(${MPI_INCLUDE_PATH})
-	if (${CBENCH_PLATFORM} MATCHES "Cori")
-		set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
-		set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
-	else()
-		set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS}")
-		set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS}")
-		set(CMAKE_C_COMPILER mpicc)
-		set(CMAKE_CXX_COMPILER mpicxx)
-	endif()
-else()
-	message(FATAL_ERROR "Could not find any MPI installation!!!") 
-endif()
-
+find_package(PkgConfig)
 
 # GenericIO
 include_directories(${CMAKE_SOURCE_DIR})
@@ -55,8 +14,66 @@ set_property(TARGET GenericIO PROPERTY POSITION_INDEPENDENT_CODE ON)
 install(TARGETS GenericIO DESTINATION .)
 
 
-
 add_executable(testC testCompress.cpp)
+target_link_libraries(testC PRIVATE GenericIO)
+
+# SZ2
+find_package(SZ)
+find_package(ZLIB)
+pkg_search_module(ZSTD IMPORTED_TARGET libzstd)
+if (SZ_FOUND)
+    target_link_libraries(GenericIO PUBLIC ZLIB::ZLIB SZ PkgConfig::ZSTD)
+#    target_link_libraries(testC PRIVATE ZLIB::ZLIB SZ PkgConfig::ZSTD)
+else ()
+    find_library(SZ_LIBRARY ${SZ_LIBRARY} CACHE STRING "SZ library")
+    if (NOT SZ_LIBRARY)
+        message(FATAL_ERROR "Could NOT find SZ")
+    endif ()
+    set(SZ_INCLUDE_PATH ${SZ_INCLUDE_PATH} CACHE PATH "SZ include directory")
+    include_directories(${SZ_INCLUDE_PATH})
+endif ()
+
+# SZ3
+find_package(SZ3 REQUIRED)
+if (SZ3_FOUND)
+    target_link_libraries(testC PRIVATE SZ3::SZ3)
+else ()
+    message(FATAL_ERROR "Could NOT find SZ3")
+endif ()
+
+# BLOSC
+pkg_search_module(BLOSC IMPORTED_TARGET blosc)
+if (BLOSC_FOUND)
+    target_link_libraries(GenericIO PRIVATE PkgConfig::BLOSC)
+#    target_link_libraries(testC PRIVATE PkgConfig::BLOSC)
+else ()
+    find_library(BLOSC_LIBRARY ${BLOSC_LIBRARY} CACHE STRING "BLOSC_LIBRARY library")
+    set(BLOSC_INCLUDE_PATH ${BLOSC_INCLUDE_PATH} CACHE PATH "BLOSC include directory")
+    include_directories(${BLOSC_INCLUDE_PATH})
+    if (NOT BLOSC_LIBRARY)
+        message(FATAL_ERROR "Could NOT find BLOSC")
+    endif ()
+endif ()
+
+
+# MPI
+find_package(MPI)
+if (MPI_FOUND)
+    include_directories(${MPI_INCLUDE_PATH})
+    if (${CBENCH_PLATFORM} MATCHES "Cori")
+        set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
+        set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
+    else ()
+        set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS}")
+        set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS}")
+        set(CMAKE_C_COMPILER mpicc)
+        set(CMAKE_CXX_COMPILER mpicxx)
+    endif ()
+else ()
+    message(FATAL_ERROR "Could not find any MPI installation!!!")
+endif ()
+
 
 #target_compile_definitions(testC PUBLIC OCTREE_ON)
-target_link_libraries(testC PRIVATE ${SZ_LIBRARY} ${BLOSC_LIBRARY} GenericIO)
+#target_link_libraries(testC PRIVATE ${SZ_LIBRARY} ${BLOSC_LIBRARY} GenericIO)
+
